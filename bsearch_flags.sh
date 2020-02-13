@@ -194,6 +194,7 @@ first="$TMP_DIR/first.cflags"
 second="$TMP_DIR/second.cflags"
 split $first $second
 update_vars
+last_good_flags=$(echo "${ALL_FLAGS[@]}")
 
 while [ $total -gt 1 ]; do
   run_build $first
@@ -201,9 +202,19 @@ while [ $total -gt 1 ]; do
   if [ $? -eq 0 ]; then
      echo "First half contained flag which fixes issue."
      FLAGS=( $(cat $first) )
+     last_good_flags="$(cat $first)"
   else
-     echo "Second half contained flag which fixes issue."
-     FLAGS=( $(cat $second) )
+     run_build $second
+     run_reproducer
+     if [ $? -ne 0 ]; then
+       echo "First AND second half fails reproducer. More than one flag needed!"
+       echo "Last good working flags: $last_good_flags"
+       exit 0
+     else
+       echo "Second half contained flag which fixes issue."
+       last_good_flags="$(cat $second)"
+       FLAGS=( $(cat $second) )
+     fi
   fi
   split $first $second
   update_vars
